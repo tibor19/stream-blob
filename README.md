@@ -2,6 +2,20 @@
 
 This Azure Function provides secure streaming access to Azure Blob Storage using Managed Identity authentication.
 
+## Table of Contents
+
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Authentication](#authentication)
+- [Environment Variables](#environment-variables)
+- [Azure Setup Instructions](#azure-setup-instructions)
+- [Containerized Deployment](#containerized-deployment)
+- [API Usage](#api-usage)
+- [Local Development](#local-development)
+- [Security Best Practices](#security-best-practices)
+- [Troubleshooting](#troubleshooting)
+- [Additional Resources](#additional-resources)
+
 ## Features
 
 - **Managed Identity Authentication**: Secure, password-less authentication to Azure Blob Storage
@@ -9,6 +23,18 @@ This Azure Function provides secure streaming access to Azure Blob Storage using
 - **Containerized Deployment Ready**: Compatible with Azure Container Apps and containerized Azure Functions
 - **Blob Name Validation**: Enforces naming pattern `YYYY-MM-DD-{20 alphanumeric characters}`
 - **HTTP Streaming**: Efficiently streams blob content via HTTP GET requests
+
+## Quick Start
+
+To get started quickly:
+
+1. **Deploy the Function**: Use the Dockerfile or deploy directly to Azure Functions
+2. **Enable Managed Identity**: Turn on system-assigned identity in Azure Portal or CLI
+3. **Configure Environment**: Set `STORAGE_ACCOUNT_NAME` and `CONTAINER_NAME` in Function App settings
+4. **Assign Role**: Grant "Storage Blob Data Reader" role to the Managed Identity on your Storage Account
+5. **Test**: Call the function with a valid blob name: `GET /api/stream-blob?blob_name=2025-12-04-abc123def456xyz789ab`
+
+For detailed instructions, see the sections below.
 
 ## Authentication
 
@@ -264,7 +290,33 @@ GET /api/stream-blob?blob_name={blob-name}
 ### Example Request
 
 ```bash
+# Basic request to stream a blob
 curl "https://<function-app-name>.azurewebsites.net/api/stream-blob?blob_name=2025-12-04-abc123def456xyz789ab"
+
+# Save blob to a file
+curl "https://<function-app-name>.azurewebsites.net/api/stream-blob?blob_name=2025-12-04-abc123def456xyz789ab" \
+  -o downloaded-file.dat
+
+# View response headers
+curl -I "https://<function-app-name>.azurewebsites.net/api/stream-blob?blob_name=2025-12-04-abc123def456xyz789ab"
+```
+
+### Example Response (Success)
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename=2025-12-04-abc123def456xyz789ab
+
+[blob content]
+```
+
+### Example Response (Error)
+
+```json
+{
+  "error": "Invalid blob name pattern. Expected format: YYYY-MM-DD-{20 alphanumeric characters}. Example: 2025-12-04-abc123def456xyz789ab"
+}
 ```
 
 ## Local Development
@@ -295,12 +347,39 @@ pip install -r requirements.txt
 }
 ```
 
+**Note:** The `local.settings.json` file is excluded from version control via `.gitignore` to prevent accidental exposure of configuration details. Never commit this file to your repository.
+
+**Optional - For User-Assigned Identity:**
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "STORAGE_ACCOUNT_NAME": "<your-storage-account-name>",
+    "CONTAINER_NAME": "<your-container-name>",
+    "AZURE_CLIENT_ID": "<your-user-assigned-identity-client-id>"
+  }
+}
+```
+
 3. Authenticate with Azure CLI:
 ```bash
 az login
 ```
 
-The `DefaultAzureCredential` will use your Azure CLI credentials for local development.
+The `DefaultAzureCredential` will use your Azure CLI credentials for local development. Ensure your Azure account has the "Storage Blob Data Reader" role on the target Storage Account.
+
+4. Ensure your Azure account has the necessary permissions:
+```bash
+# Check your current Azure account
+az account show
+
+# Verify you have access to the storage account (optional)
+az storage account show \
+  --name <your-storage-account-name> \
+  --resource-group <resource-group-name>
+```
 
 ### Running Tests
 
@@ -312,6 +391,13 @@ python -m unittest test_function_app.py -v
 
 ```bash
 func start
+```
+
+The function will start on `http://localhost:7071`. You can test it with:
+
+```bash
+# Test the function locally
+curl "http://localhost:7071/api/stream-blob?blob_name=2025-12-04-abc123def456xyz789ab"
 ```
 
 ## Security Best Practices
