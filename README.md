@@ -32,7 +32,9 @@ To get started quickly:
 2. **Enable Managed Identity**: Turn on system-assigned identity in Azure Portal or CLI
 3. **Configure Environment**: Set `STORAGE_ACCOUNT_NAME` and `CONTAINER_NAME` in Function App settings
 4. **Assign Role**: Grant "Storage Blob Data Reader" role to the Managed Identity on your Storage Account
-5. **Test**: Call the function with a valid blob name: `GET /api/stream-blob?blob_name=2025-12-04-abc123def456xyz789ab`
+5. **Test**: Call the function with a valid blob name: `GET /api/stream-blob?blob_name=YYYY-MM-DD-{your-blob-id}`
+   - Replace `YYYY-MM-DD` with the actual date and provide the 20-character alphanumeric blob ID
+   - Example: `2025-12-04-abc123def456xyz789ab`
 
 For detailed instructions, see the sections below.
 
@@ -375,6 +377,9 @@ The `DefaultAzureCredential` will use your Azure CLI credentials for local devel
 # Check your current Azure account
 az account show
 
+# List storage accounts to find your storage account and resource group (if needed)
+az storage account list --output table
+
 # Verify you have access to the storage account (optional)
 az storage account show \
   --name <your-storage-account-name> \
@@ -396,9 +401,14 @@ func start
 The function will start on `http://localhost:7071`. You can test it with:
 
 ```bash
-# Test the function locally
+# Test the function locally (replace with an actual blob name from your container)
+curl "http://localhost:7071/api/stream-blob?blob_name=YYYY-MM-DD-{your-blob-id}"
+
+# Example with a specific blob name
 curl "http://localhost:7071/api/stream-blob?blob_name=2025-12-04-abc123def456xyz789ab"
 ```
+
+**Note:** Replace the blob name with an actual blob that exists in your container. The blob name must follow the pattern `YYYY-MM-DD-{20 alphanumeric characters}`.
 
 ## Security Best Practices
 
