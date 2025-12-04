@@ -1,0 +1,56 @@
+{
+	"name": "Azure Functions Python DevContainer",
+	"image": "mcr.microsoft.com/azure-functions/python:4-python3.11",
+	"workspaceFolder": "/workspace",
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+	
+	"features": {
+		"ghcr.io/devcontainers/features/azure-cli:1": {
+			"version": "latest"
+		},
+		"ghcr.io/jlaundry/devcontainer-features/azure-functions-core-tools:1": {
+			"version": "latest"
+		}
+	},
+	
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-azuretools.vscode-azurefunctions",
+				"ms-python.black-formatter",
+				"ms-python.pylint"
+			],
+			"settings": {
+				"python.defaultInterpreterPath": "/usr/local/bin/python",
+				"python.linting.enabled": true,
+				"python.linting.pylintEnabled": true,
+				"python.formatting.provider": "none",
+				"[python]": {
+					"editor.defaultFormatter": "ms-python.black-formatter",
+					"editor.formatOnSave": true,
+					"editor.codeActionsOnSave": {
+						"source.organizeImports": "explicit"
+					}
+				},
+				"files.exclude": {
+					"**/__pycache__": true,
+					"**/*.pyc": true
+				}
+			}
+		}
+	},
+	
+	"forwardPorts": [7071],
+	"portsAttributes": {
+		"7071": {
+			"label": "Azure Functions",
+			"onAutoForward": "notify"
+		}
+	},
+	
+	"postCreateCommand": "pip install -r requirements.txt",
+	
+	"remoteUser": "root"
+}
