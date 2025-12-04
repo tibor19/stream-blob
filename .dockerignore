@@ -46,6 +46,8 @@ local.settings.json
 .python_packages/
 
 # Testing
+# Tests are excluded from the container as they're only needed during development
+# The containerization setup is validated before building the production image
 .pytest_cache/
 .coverage
 htmlcov/

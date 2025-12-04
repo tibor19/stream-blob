@@ -128,10 +128,13 @@ class TestContainerization(unittest.TestCase):
             lines = f.readlines()
         
         # Check that each package has a version constraint
+        # Valid PEP 440 version specifiers: ==, !=, >=, <=, >, <, ~=, ===
+        version_specifiers = ['==', '!=', '>=', '<=', '>', '<', '~=', '===']
         for line in lines:
             line = line.strip()
             if line and not line.startswith('#'):
-                self.assertTrue('>=' in line or '==' in line or '~=' in line,
+                has_version = any(spec in line for spec in version_specifiers)
+                self.assertTrue(has_version,
                               f"Package {line} should have a version constraint")
 
 
