@@ -1,5 +1,7 @@
 import unittest
-from function_app import validate_blob_name
+import os
+from unittest.mock import patch, MagicMock
+from function_app import validate_blob_name, get_blob_service_client
 
 
 class TestBlobNameValidation(unittest.TestCase):
@@ -84,5 +86,63 @@ class TestBlobNameValidation(unittest.TestCase):
                 )
 
 
+class TestManagedIdentityAuthentication(unittest.TestCase):
+    """Test cases for Managed Identity authentication configuration"""
+    
+    def test_get_blob_service_client_requires_storage_account_name(self):
+        """Test that STORAGE_ACCOUNT_NAME environment variable is required"""
+        # Ensure STORAGE_ACCOUNT_NAME is not set
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(ValueError) as context:
+                get_blob_service_client()
+            
+            self.assertIn("STORAGE_ACCOUNT_NAME", str(context.exception))
+    
+    @patch('function_app.BlobServiceClient')
+    @patch('function_app.DefaultAzureCredential')
+    def test_get_blob_service_client_with_system_assigned_identity(self, mock_credential, mock_blob_client):
+        """Test BlobServiceClient creation with system-assigned identity (no AZURE_CLIENT_ID)"""
+        # Set only STORAGE_ACCOUNT_NAME
+        with patch.dict(os.environ, {'STORAGE_ACCOUNT_NAME': 'teststorage'}, clear=True):
+            mock_cred_instance = MagicMock()
+            mock_credential.return_value = mock_cred_instance
+            
+            client = get_blob_service_client()
+            
+            # Verify DefaultAzureCredential was called
+            mock_credential.assert_called_once()
+            
+            # Verify BlobServiceClient was called with correct URL and credential
+            mock_blob_client.assert_called_once_with(
+                "https://teststorage.blob.core.windows.net",
+                credential=mock_cred_instance
+            )
+    
+    @patch('function_app.BlobServiceClient')
+    @patch('function_app.DefaultAzureCredential')
+    def test_get_blob_service_client_with_user_assigned_identity(self, mock_credential, mock_blob_client):
+        """Test BlobServiceClient creation with user-assigned identity (AZURE_CLIENT_ID set)"""
+        # Set both STORAGE_ACCOUNT_NAME and AZURE_CLIENT_ID
+        with patch.dict(os.environ, {
+            'STORAGE_ACCOUNT_NAME': 'teststorage',
+            'AZURE_CLIENT_ID': '12345678-1234-1234-1234-123456789abc'
+        }, clear=True):
+            mock_cred_instance = MagicMock()
+            mock_credential.return_value = mock_cred_instance
+            
+            client = get_blob_service_client()
+            
+            # Verify DefaultAzureCredential was called
+            # Note: DefaultAzureCredential automatically detects AZURE_CLIENT_ID from environment
+            mock_credential.assert_called_once()
+            
+            # Verify BlobServiceClient was called with correct URL and credential
+            mock_blob_client.assert_called_once_with(
+                "https://teststorage.blob.core.windows.net",
+                credential=mock_cred_instance
+            )
+
+
 if __name__ == '__main__':
     unittest.main()
+
