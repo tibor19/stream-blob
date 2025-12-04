@@ -174,18 +174,34 @@ This function is fully compatible with containerized deployments using Azure Con
 2. **Environment Variables**: Configure environment variables in your container configuration
 3. **No Code Changes Required**: The `DefaultAzureCredential` automatically detects the containerized environment
 
-### Example Dockerfile:
+### Building the Docker Image
 
-```dockerfile
-FROM mcr.microsoft.com/azure-functions/python:4-python3.11
+A `Dockerfile` is provided in the repository for building the containerized Azure Function:
 
-ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
-    AzureFunctionsJobHost__Logging__Console__IsEnabled=true
+```bash
+# Build the Docker image
+docker build -t stream-blob-function:latest .
 
-COPY requirements.txt /
-RUN pip install -r /requirements.txt
+# Test locally (without authentication)
+docker run -p 8080:80 \
+  -e STORAGE_ACCOUNT_NAME=<your-storage-account> \
+  -e CONTAINER_NAME=<your-container> \
+  stream-blob-function:latest
+```
 
-COPY . /home/site/wwwroot
+The Dockerfile uses the official Azure Functions Python 4 runtime base image with Python 3.11.
+
+### Pushing to Azure Container Registry
+
+```bash
+# Login to Azure Container Registry
+az acr login --name <registry-name>
+
+# Tag the image
+docker tag stream-blob-function:latest <registry-name>.azurecr.io/stream-blob-function:latest
+
+# Push to Azure Container Registry
+docker push <registry-name>.azurecr.io/stream-blob-function:latest
 ```
 
 ### Deploying to Azure Container Apps:
@@ -195,10 +211,32 @@ COPY . /home/site/wwwroot
 az containerapp create \
   --name <app-name> \
   --resource-group <resource-group-name> \
-  --image <image-name> \
+  --image <registry-name>.azurecr.io/stream-blob-function:latest \
   --environment <environment-name> \
   --system-assigned \
   --env-vars \
+    STORAGE_ACCOUNT_NAME=<storage-account-name> \
+    CONTAINER_NAME=<container-name> \
+  --registry-server <registry-name>.azurecr.io
+```
+
+### Deploying to Azure Functions (Container)
+
+```bash
+# Create a Function App with container support
+az functionapp create \
+  --name <function-app-name> \
+  --resource-group <resource-group-name> \
+  --storage-account <storage-account-name> \
+  --deployment-container-image-name <registry-name>.azurecr.io/stream-blob-function:latest \
+  --docker-registry-server-url https://<registry-name>.azurecr.io \
+  --assign-identity [system]
+
+# Configure environment variables
+az functionapp config appsettings set \
+  --name <function-app-name> \
+  --resource-group <resource-group-name> \
+  --settings \
     STORAGE_ACCOUNT_NAME=<storage-account-name> \
     CONTAINER_NAME=<container-name>
 ```
