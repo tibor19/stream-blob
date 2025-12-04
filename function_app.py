@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from io import BytesIO
 from typing import Optional
 import azure.functions as func
 from azure.identity import DefaultAzureCredential
@@ -111,16 +112,23 @@ def stream_blob(req: func.HttpRequest) -> func.HttpResponse:
                 mimetype="application/json"
             )
         
-        # Download blob as stream
-        blob_data = blob_client.download_blob()
+        # Download blob as stream - this call gets both content and properties
+        # Note: Azure Functions Python v2 HttpResponse requires bytes body,
+        # so we must load the blob content into memory. Using readinto() with
+        # BytesIO is the most efficient approach available within this constraint.
+        stream = BytesIO()
+        downloader = blob_client.download_blob()
+        downloader.readinto(stream)
         
-        # Get blob properties for Content-Type
-        properties = blob_client.get_blob_properties()
-        content_type = properties.content_settings.content_type or "application/octet-stream"
+        # Get content type from the downloader properties
+        content_type = downloader.properties.content_settings.content_type or "application/octet-stream"
         
-        # Stream the blob content
+        # Get the blob content from the stream
+        blob_content = stream.getvalue()
+        
+        # Return the blob content
         return func.HttpResponse(
-            body=blob_data.readall(),
+            body=blob_content,
             status_code=200,
             mimetype=content_type,
             headers={
