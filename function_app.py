@@ -32,6 +32,14 @@ def get_blob_service_client() -> BlobServiceClient:
     """
     Create a BlobServiceClient using Managed Identity authentication.
     
+    Supports both system-assigned and user-assigned Managed Identity:
+    - System-assigned: No additional configuration needed
+    - User-assigned: Set AZURE_CLIENT_ID environment variable to the client ID of the user-assigned identity
+    
+    Environment Variables:
+        STORAGE_ACCOUNT_NAME (required): Name of the Azure Storage Account
+        AZURE_CLIENT_ID (optional): Client ID for user-assigned Managed Identity
+    
     Returns:
         BlobServiceClient instance
         
@@ -44,6 +52,10 @@ def get_blob_service_client() -> BlobServiceClient:
         raise ValueError("STORAGE_ACCOUNT_NAME environment variable is not set")
     
     # Use Managed Identity for authentication
+    # DefaultAzureCredential automatically detects the authentication method:
+    # - If AZURE_CLIENT_ID is set, it will use user-assigned Managed Identity
+    # - Otherwise, it will use system-assigned Managed Identity
+    # This credential works seamlessly in containerized deployments
     credential = DefaultAzureCredential()
     account_url = f"https://{storage_account_name}.blob.core.windows.net"
     
