@@ -113,7 +113,9 @@ def stream_blob(req: func.HttpRequest) -> func.HttpResponse:
             )
         
         # Download blob as stream - this call gets both content and properties
-        # Using readinto() with BytesIO for efficient memory usage
+        # Note: Azure Functions Python v2 HttpResponse requires bytes body,
+        # so we must load the blob content into memory. Using readinto() with
+        # BytesIO is the most efficient approach available within this constraint.
         stream = BytesIO()
         downloader = blob_client.download_blob()
         downloader.readinto(stream)
